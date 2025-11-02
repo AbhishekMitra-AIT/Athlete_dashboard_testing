@@ -445,23 +445,10 @@ class ORMDMLState(AbstractORMCompileState):
                 )
 
     @classmethod
-    def _get_dml_plugin_subject(cls, statement):
-        plugin_subject = statement.table._propagate_attrs.get("plugin_subject")
-
-        if (
-            not plugin_subject
-            or not plugin_subject.mapper
-            or plugin_subject
-            is not statement._propagate_attrs["plugin_subject"]
-        ):
-            return None
-        return plugin_subject
-
-    @classmethod
     def _get_multi_crud_kv_pairs(cls, statement, kv_iterator):
-        plugin_subject = cls._get_dml_plugin_subject(statement)
+        plugin_subject = statement._propagate_attrs["plugin_subject"]
 
-        if not plugin_subject:
+        if not plugin_subject or not plugin_subject.mapper:
             return UpdateDMLState._get_multi_crud_kv_pairs(
                 statement, kv_iterator
             )
@@ -481,12 +468,13 @@ class ORMDMLState(AbstractORMCompileState):
             needs_to_be_cacheable
         ), "no test coverage for needs_to_be_cacheable=False"
 
-        plugin_subject = cls._get_dml_plugin_subject(statement)
+        plugin_subject = statement._propagate_attrs["plugin_subject"]
 
-        if not plugin_subject:
+        if not plugin_subject or not plugin_subject.mapper:
             return UpdateDMLState._get_crud_kv_pairs(
                 statement, kv_iterator, needs_to_be_cacheable
             )
+
         return list(
             cls._get_orm_crud_kv_pairs(
                 plugin_subject.mapper,
