@@ -271,9 +271,9 @@ class Range(Generic[_T]):
                     value2 += step
                     value2_inc = False
 
-        if value1 < value2:
+        if value1 < value2:  # type: ignore
             return -1
-        elif value1 > value2:
+        elif value1 > value2:  # type: ignore
             return 1
         elif only_values:
             return 0

@@ -359,7 +359,7 @@ class collection:
         return fn
 
     @staticmethod
-    def adds(arg: int) -> Callable[[_FN], _FN]:
+    def adds(arg):
         """Mark the method as adding an entity to the collection.
 
         Adds "add to collection" handling to the method.  The decorator

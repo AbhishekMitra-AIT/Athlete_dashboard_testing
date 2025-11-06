@@ -5,7 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Public API functions for the event system."""
+"""Public API functions for the event system.
+
+"""
 from __future__ import annotations
 
 from typing import Any

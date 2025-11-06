@@ -1374,13 +1374,7 @@ def _emit_post_update_statements(
             )
 
             rows += c.rowcount
-            for i, (
-                state,
-                state_dict,
-                mapper_rec,
-                connection,
-                params,
-            ) in enumerate(records):
+            for state, state_dict, mapper_rec, connection, params in records:
                 _postfetch_post_update(
                     mapper_rec,
                     uowtransaction,
@@ -1388,7 +1382,7 @@ def _emit_post_update_statements(
                     state,
                     state_dict,
                     c,
-                    c.context.compiled_parameters[i],
+                    c.context.compiled_parameters[0],
                 )
 
         if check_rowcount:

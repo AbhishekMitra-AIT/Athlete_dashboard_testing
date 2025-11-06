@@ -6,7 +6,10 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""Establish constraint and index naming conventions."""
+"""Establish constraint and index naming conventions.
+
+
+"""
 
 from __future__ import annotations
 
