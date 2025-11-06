@@ -20,6 +20,10 @@ Steps -
 3. Install the dependencies ($ pip install -r requirements.txt)
 4. Run the application from terminal (python app.py)
 5. Create a testing branch for submitting a PR
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
 
 
