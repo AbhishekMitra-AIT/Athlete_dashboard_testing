@@ -2,11 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Float
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 import datetime as dt
 from collections import defaultdict
 import requests
 import os
 from dotenv import load_dotenv
+from authlib.integrations.flask_client import OAuth
 
 load_dotenv()
 
@@ -14,11 +17,51 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
+# Initialize Flask App
 app = Flask(__name__)
 
 # Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///athlete_data.db"
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "your-secret-key-here")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'super-secret-key')
+
+# OAuth Configuration
+app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID')
+app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET')
+app.config['GITHUB_CLIENT_ID'] = os.environ.get('GITHUB_CLIENT_ID')
+app.config['GITHUB_CLIENT_SECRET'] = os.environ.get('GITHUB_CLIENT_SECRET')
+
+db = SQLAlchemy(app)
+
+# Initialize OAuth
+oauth = OAuth(app)
+
+# Register Google
+google = oauth.register(
+    name='google',
+    client_id=app.config['GOOGLE_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    client_kwargs={'scope': 'openid email profile'},
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
+)
+
+# Register GitHub
+github = oauth.register(
+    name='github',
+    client_id=app.config['GITHUB_CLIENT_ID'],
+    client_secret=app.config['GITHUB_CLIENT_SECRET'],
+    access_token_url='https://github.com/login/oauth/access_token',
+    access_token_params=None,
+    authorize_url='https://github.com/login/oauth/authorize',
+    authorize_params=None,
+    api_base_url='https://api.github.com/',
+    client_kwargs={'scope': 'user:email'}
+)
 
 # Strava API Configuration
 STRAVA_CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID")
@@ -45,6 +88,37 @@ class StravaToken(db.Model):
     expires_at: Mapped[int] = mapped_column(Integer, nullable=False)
     athlete_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256))
+    google_id = db.Column(db.String(128), unique=True, nullable=True)
+    github_id = db.Column(db.String(128), unique=True, nullable=True)
+    created_at = db.Column(db.DateTime, default=dt.datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def set_password(self, password):
+        """Hash and set password"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Check if provided password matches hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_active_user(self):
+        return self.is_active == 1
+    
+    def is_anonymous(self):
+        return False
+    
+    def get_id(self):
+        return str(self.id)
+
 with app.app_context():
     db.create_all()
 
@@ -54,6 +128,20 @@ def get_month_year(date_str):
         parts = date_str.split('-')
         if len(parts) == 3:
             return f"{parts[1]}-{parts[2]}"
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_current_user():
+    """Get current logged-in user"""
+    if 'user_id' in session:
+        return db.session.get(User, int(session['user_id']))
     return None
 
 def calculate_pace(distance_km, time_str):
@@ -186,9 +274,11 @@ def import_strava_activity(activity):
     return True
 
 @app.route('/')
+@login_required
 def home():
     # Check if Strava is connected
     strava_connected = db.session.query(StravaToken).first() is not None
+    current_user = get_current_user()
     
     with app.app_context():
         result = db.session.execute(db.select(Athlete_Data).order_by(Athlete_Data.date.desc(), Athlete_Data.id.desc()))
@@ -219,23 +309,143 @@ def home():
                          monthly_totals=monthly_totals,
                          total_distance=total_distance,
                          total_calories=total_calories,
-                         strava_connected=strava_connected)
+                         strava_connected=strava_connected,
+                         current_user=current_user)
 
 @app.route('/strava/connect')
+@login_required
 def strava_connect():
     """Redirect user to Strava authorization page"""
     if not STRAVA_CLIENT_ID:
         flash("Strava API credentials not configured", "error")
-        return redirect(url_for('home'))
+    @app.route('/logout')
+def logout():
+    """Log out the current user"""
+    session.pop('user_id', None)
+    flash('You have been logged out successfully.', 'success')
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handle user login"""
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if not email or not password:
+            flash('Please provide both email and password.', 'error')
+            return render_template('login.html')
+        
+        # Find user by email
+        user = db.session.query(User).filter_by(email=email).first()
+        
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            flash('Welcome back!', 'success')
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid email or password.', 'error')
     
-    auth_url = (
-        f"https://www.strava.com/oauth/authorize"
-        f"?client_id={STRAVA_CLIENT_ID}"
-        f"&redirect_uri={STRAVA_REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=activity:read_all"
-    )
-    return redirect(auth_url)
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Handle user registration"""
+    if request.method == 'POST':
+        email = request.form.get('email')
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not email or not username or not password:
+            flash('Please fill in all fields.', 'error')
+            return render_template('register.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('register.html')
+        
+        # Check if user already exists
+        existing_email = db.session.query(User).filter_by(email=email).first()
+        existing_username = db.session.query(User).filter_by(username=username).first()
+        
+        if existing_email:
+            flash('Email already registered.', 'error')
+            return render_template('register.html')
+        
+        if existing_username:
+            flash('Username already taken.', 'error')
+            return render_template('register.html')
+        
+        # Create new user
+        new_user = User(email=email, username=username)
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('Account created successfully! Please log in.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/login/google')
+def google_login():
+    redirect_uri = url_for('google_authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/login/google/authorize')
+def google_authorize():
+    token = google.authorize_access_token()
+    user_info = google.get('userinfo').json()
+    google_id = user_info['id']
+    email = user_info['email']
+    
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(email=email, username=email.split('@')[0], google_id=google_id)
+            db.session.add(user)
+            db.session.commit()
+        else:
+            user.google_id = google_id
+            db.session.commit()
+            
+    session['user_id'] = user.id
+    flash('Logged in with Google successfully!', 'success')
+    return redirect(url_for('home'))
+
+@app.route('/login/github')
+def github_login():
+    redirect_uri = url_for('github_authorize', _external=True)
+    return github.authorize_redirect(redirect_uri)
+
+@app.route('/login/github/authorize')
+def github_authorize():
+    token = github.authorize_access_token()
+    user_info = github.get('user').json()
+    github_id = user_info['id']
+    email = user_info.get('email')
+    
+    if not email:
+        flash('GitHub email not public. Please make it public to log in.', 'error')
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(github_id=github_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(email=email, username=user_info.get('login'), github_id=github_id)
+            db.session.add(user)
+            db.session.commit()
+        else:
+            user.github_id = github_id
+            db.session.commit()
+            
+    session['user_id'] = user.id
+    flash('Logged in with GitHub successfully!', 'success')
+    return redirect(url_for('home'))
 
 @app.route('/strava/callback')
 def strava_callback():
@@ -284,6 +494,7 @@ def strava_callback():
     return redirect(url_for('home'))
 
 @app.route('/strava/import')
+@login_required
 def strava_import():
     """Import activities from Strava"""
     activities = fetch_strava_activities()
@@ -305,6 +516,7 @@ def strava_import():
     return redirect(url_for('home'))
 
 @app.route('/strava/disconnect')
+@login_required
 def strava_disconnect():
     """Disconnect Strava account"""
     token_record = db.session.query(StravaToken).first()
@@ -316,6 +528,7 @@ def strava_disconnect():
     return redirect(url_for('home'))
 
 @app.route("/edit", methods=["GET", "POST"])
+@login_required
 def edit():
     if request.method == "POST":
         athlete_id = int(request.form.get("id"))
@@ -354,6 +567,7 @@ def edit():
         return render_template("edit.html", data=athlete_record)
 
 @app.route('/delete')
+@login_required
 def delete_data():
     athlete_id = request.args.get('id')
     athlete_to_delete = db.get_or_404(Athlete_Data, int(athlete_id))
@@ -363,6 +577,7 @@ def delete_data():
     return redirect(url_for('home'))
 
 @app.route("/add", methods=["GET", "POST"])
+@login_required
 def add():
     if request.method == "POST":
         activity_type = request.form.get("activity_type", "Running")
