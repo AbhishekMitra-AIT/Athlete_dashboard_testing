@@ -21,6 +21,15 @@ Prerequisites -
 1. Basic understanding of Python, Flask, Database, VScode, HTML, CSS, Git.
 
 
+The developer cloning this repo needs to have an account created in Strava app(https://www.strava.com/). This is available in playstore and ios.
+
+The developer also needs to have access to railway(https://railway.com/dashboard). A website hosting platform.
+
+Prerequisites -
+
+1. Basic understanding of Python, Flask, Database, VScode, HTML, CSS, Git.
+
+
 Steps -
 
 1. Clone the repo
