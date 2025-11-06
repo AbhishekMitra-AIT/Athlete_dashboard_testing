@@ -143,10 +143,24 @@
     </style>
 </head>
 <body>
-<h1>🏃 Training Dashboard</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1>🏃 Training Dashboard</h1>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <span style="color: #666;">Welcome, <strong>{{ username }}</strong></span>
+        <a href="{{ url_for('logout') }}" style="background: #dc3545; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; font-size: 14px;">Logout</a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
 <div class="header">
-    <div style="display: flex; gap: 10px;">
+    <div class="header-buttons">
         <a href="{{ url_for('add') }}" class="add-button">+ Add New Record</a>
         
         {% if strava_connected %}
@@ -167,14 +181,6 @@
         </div>
     </div>
 </div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
 
 {% if sorted_months == [] %}
   <div class="empty-state">
