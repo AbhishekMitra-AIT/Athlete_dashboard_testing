@@ -383,15 +383,9 @@ def google_callback():
     flash('Login successful!', 'success')
     return redirect(url_for('home'))
 
-@app.before_request
-def force_https_in_production():
-    if request.headers.get('X-Forwarded-Proto', 'http') == 'http':
-        url = request.url.replace('http://', 'https://', 1)
-        return redirect(url, code=301)
-
 @app.route('/login/github')
 def github_login():
-    redirect_uri = url_for('github_callback', _external=True)
+    redirect_uri = url_for('github_callback', _external=True).replace("http://", "https://")
     return github.authorize_redirect(redirect_uri)
 
 @app.route('/callback/github')
