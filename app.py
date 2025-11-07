@@ -51,8 +51,8 @@ google = oauth.register(
 # GitHub OAuth
 github = oauth.register(
     name='github',
-    client_id=os.environ.get("GITHUBCLIENT_ID"),
-    client_secret=os.environ.get("GITHUBCLIENT_SECRET"),
+    client_id=os.environ.get("GHCLIENT_ID"),
+    client_secret=os.environ.get("GHCLIENT_SECRET"),
     access_token_url='https://github.com/login/oauth/access_token',
     access_token_params=None,
     authorize_url='https://github.com/login/oauth/authorize',
