@@ -21,3 +21,6 @@ Steps -
 website - https://web-production-289c2.up.railway.app/
 
 
+Disclaimer
+
+This feature is not a replacement for a coach or health advice. The more we learn about you, the better information we can provide, but data is not the only indicator of health or fitness. Please pay attention to your body and stay safe. Consult with your doctor before beginning any exercise program.
