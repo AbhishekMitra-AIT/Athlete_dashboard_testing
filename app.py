@@ -353,8 +353,8 @@ def verify_email(token):
 
 @app.route('/login/google')
 def google_login():
-    # redirect_uri = url_for('google_callback', _external=True)
-    redirect_uri = "https://web-production-289c2.up.railway.app/callback/google"
+    redirect_uri = url_for('google_callback', _external=True).replace("http://", "https://")
+    # redirect_uri = "https://web-production-289c2.up.railway.app/callback/google"
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/callback/google')
