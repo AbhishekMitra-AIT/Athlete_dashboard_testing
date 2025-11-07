@@ -34,6 +34,9 @@ Steps -
 
 1. Clone the repo
 2. Activate the virtual environment. If venv is not created then create and activate it.
+    2.1 python -m venv venv
+    2.2 source venv/bin/activate(linux/mac)
+    2.3 venv/scripts/activate
 3. Install the dependencies ($ pip install -r requirements.txt)
 4. Run the application from terminal (python app.py)
 5. Create a testing branch for submitting a PR
@@ -41,4 +44,7 @@ Steps -
 
 website - https://web-production-289c2.up.railway.app/
 
-Discord - abhishekmitra_ait
+
+Disclaimer
+
+This feature is not a replacement for a coach or health advice. The more we learn about you, the better information we can provide, but data is not the only indicator of health or fitness. Please pay attention to your body and stay safe. Consult with your doctor before beginning any exercise program.
