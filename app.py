@@ -28,7 +28,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 # Strava API Configuration
 STRAVA_CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID")
 STRAVA_CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET")
-STRAVA_REDIRECT_URI = os.environ.get("STRAVA_REDIRECT_URI", "http://localhost:5000/strava/callback")
+STRAVA_REDIRECT_URI = os.environ.get("STRAVA_REDIRECT_URI", "http://localhost:5001/strava/callback")
 
 # Email Configuration
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
@@ -51,8 +51,8 @@ google = oauth.register(
 # GitHub OAuth
 github = oauth.register(
     name='github',
-    client_id=os.environ.get("GITHUBCLIENT_ID"),
-    client_secret=os.environ.get("GITHUBCLIENT_SECRET"),
+    client_id=os.environ.get("GHCLIENT_ID"),
+    client_secret=os.environ.get("GHCLIENT_SECRET"),
     access_token_url='https://github.com/login/oauth/access_token',
     access_token_params=None,
     authorize_url='https://github.com/login/oauth/authorize',
@@ -646,5 +646,5 @@ def add():
         return render_template("add.html")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     app.run(host='0.0.0.0', port=port, debug=False)

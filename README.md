@@ -14,6 +14,9 @@ Prerequisites -
 Steps -
 1. Clone the repo
 2. Activate the virtual environment. If venv is not created then create and activate it.
+2.1 python -m venv venv
+2.2 source venv/bin/activate(linux/mac)
+2.3 venv/scripts/activate
 3. Install the dependencies ($ pip install -r requirements.txt)
 4. Run the application from terminal (python app.py)
 
